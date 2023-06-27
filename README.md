@@ -6,14 +6,14 @@ This dbt package contains date related macros to support unit tests writing for 
 
 ### We have dbt model
 
-Let's imagine that we have the table with information about users: `account_id`, `username`, `email` and `created_at` as date and time in timestamp format. According to this table we have the following dbt model:
+We have the table with information about users: `user_id`, `username`, `email` and `updated_at` as date and time in timestamp format. According to this table we have the following dbt model:
 
 ```sql
 SELECT
-  account_id,
+  user_id,
   username,
   email,
-  created_at
+  updated_at
 FROM users
 ```
 
@@ -28,18 +28,17 @@ Now we can write unit tests for our model. Let's test our users' data.
 
 {% call dbt_unit_testing.test ('user', 'test user data') %}
   {% call dbt_unit_testing.expect() %}
-    SELECT '1' AS account_id, 'test_username1' AS username, 'email1@email.com' AS email, 1651255712000 AS created_at
-    SELECT '2' AS account_id, 'test_username2' AS username, 'email2@email.com' AS email, 1650391712000 AS created_at
-    SELECT '3' AS account_id, 'test_username3' AS username, 'email3@email.com' AS email, 1649527712000 AS created_at
+    SELECT '1' AS user_id, 'test_username1' AS username, 'email1@email.com' AS email, 1651255712000 AS updated_at
+    SELECT '2' AS user_id, 'test_username2' AS username, 'email2@email.com' AS email, 1650391712000 AS updated_at
+    SELECT '3' AS user_id, 'test_username3' AS username, 'email3@email.com' AS email, 1649527712000 AS updated_at
   {% endcall %}
 {% endcall %}
 ```
+### We see inconvenient date and time format
 
-### Inconvenient date and time format
+We can see raw date and time data. But we are unable to discern a specific time (such as day, month, or year) without converting the timestamp data using a specific tool.
 
-We can see raw date and time data. But we don't see a specific time (day, month, year). To see that we need convert this data.
-
-This package contains the script that generates a set of variables with date and time objects in different formats.
+This package includes a script that generates a set of variables with date and time objects in different formats.
 
 ```sql
 {{ config(tags=['unit-test']) }}
@@ -47,14 +46,14 @@ This package contains the script that generates a set of variables with date and
 {% call dbt_unit_testing.test ('user', 'test user data') %}
   {%- set dt = dbt_unit_testing_date_utils.generate_n_days_ago_variables() -%}
   {% call dbt_unit_testing.expect() %}
-    SELECT '1' AS account_id, 'test_username1' AS username, 'email1@email.com' AS email, '{{ dt["-10d_epoch"] | int }}' AS created_at
-    SELECT '2' AS account_id, 'test_username2' AS username, 'email2@email.com' AS email, '{{ dt["-20d_epoch"] | int }}' AS created_at
-    SELECT '3' AS account_id, 'test_username3' AS username, 'email3@email.com' AS email, '{{ dt["-30d_epoch"] | int }}' AS created_at
+    SELECT '1' AS user_id, 'test_username1' AS username, 'email1@email.com' AS email, '{{ dt["-10d_epoch"] | int }}' AS updated_at
+    SELECT '2' AS user_id, 'test_username2' AS username, 'email2@email.com' AS email, '{{ dt["-20d_epoch"] | int }}' AS updated_at
+    SELECT '3' AS user_id, 'test_username3' AS username, 'email3@email.com' AS email, '{{ dt["-30d_epoch"] | int }}' AS updated_at
   {% endcall %}
 {% endcall %}
 ```
 
-As you see, we don't need to define datetime data by hands. We can use prepared datetime variables, which is much more convenient and visually clear.
+As you can observe, it is not necessary to manually define datetime data. We can use prepared datetime variables, which is significantly more convenient and visually comprehensible.
 
 ### Mock current datetime
 
