@@ -2,38 +2,31 @@
 
 This dbt package contains date related macros to support unit tests writing for the data that contains a lot of date and time based logic. With these marcos you can generate datetime variables that can be used in your unit tests. This package can be (re)used across dbt projects.
 
-## Why do we need this package? 
+## Getting started
 
 ### We have dbt model
 
-We have the table with information about users: `user_id`, `username`, `email` and `updated_at` as date and time in timestamp format. According to this table we have the following dbt model:
-
-```sql
-SELECT
-  user_id,
-  username,
-  email,
-  updated_at
-FROM users
-```
+We have the table with information about users: `user_id`, `username`, `email` and `updated_at` as date and time in timestamp format.
 
 ### We would like to write unit tests
 
 We would like write tests for this model using [dbt_unit_testing](https://github.com/EqualExperts/dbt-unit-testing) framework. 
 
-Now we can write unit tests for our model. Let's test our users' data.
+Now we can write unit tests for our project. For example, we would like to mock mentioned model with [mock_ref](https://github.com/EqualExperts/dbt-unit-testing/blob/3bfdb45b516ebc393e43edc027ab51cb9fe5530a/macros/mock_builders.sql#L1) macro.
 
 ```sql
 {{ config(tags=['unit-test']) }}
 
 {% call dbt_unit_testing.test ('user', 'test user data') %}
-  {% call dbt_unit_testing.expect() %}
+  {% call dbt_unit_testing.mock_ref('user') %}
     SELECT '1' AS user_id, 'test_username1' AS username, 'email1@email.com' AS email, 1651255712000 AS updated_at
     SELECT '2' AS user_id, 'test_username2' AS username, 'email2@email.com' AS email, 1650391712000 AS updated_at
     SELECT '3' AS user_id, 'test_username3' AS username, 'email3@email.com' AS email, 1649527712000 AS updated_at
   {% endcall %}
+  -- other unit tests code --
 {% endcall %}
 ```
+
 ### We see inconvenient date and time format
 
 We can see raw date and time data. But we are unable to discern a specific time (such as day, month, or year) without converting the timestamp data using a specific tool.
@@ -45,19 +38,20 @@ This package includes a script that generates a set of variables with date and t
 
 {% call dbt_unit_testing.test ('user', 'test user data') %}
   {%- set dt = dbt_unit_testing_date_utils.generate_n_days_ago_variables() -%}
-  {% call dbt_unit_testing.expect() %}
+  {% call dbt_unit_testing.mock_ref('user') %}
     SELECT '1' AS user_id, 'test_username1' AS username, 'email1@email.com' AS email, '{{ dt["-10d_epoch"] | int }}' AS updated_at
     SELECT '2' AS user_id, 'test_username2' AS username, 'email2@email.com' AS email, '{{ dt["-20d_epoch"] | int }}' AS updated_at
     SELECT '3' AS user_id, 'test_username3' AS username, 'email3@email.com' AS email, '{{ dt["-30d_epoch"] | int }}' AS updated_at
   {% endcall %}
+  -- other unit tests code --
 {% endcall %}
 ```
 
-As you can observe, it is not necessary to manually define datetime data. We can use prepared datetime variables, which is significantly more convenient and visually comprehensible.
+As you can observe, it is not necessary to manually define datetime data. We can use prepared datetime variables, which is significantly more convenient and visually comprehensible. In this example we can see that the `updated_at` field has values "10 days ago", "20 days ago", "30 days ago".
 
-### Mock current datetime
+### Mock datetime to generate
 
-For your tests you can also define macro to mock current timestamp. For example as follows:
+With every test run you will get a different generation result (time does not stand still). For your tests you can define macro to mock current posix timestamp. For example as follows:
 
 ```sql
 {% macro mocked_timestamp_posix() %}
@@ -71,6 +65,23 @@ And then you can use macro with mocked date:
 ```sql
 {%- set posix_time = mocked_timestamp_posix() | int -%}
 {%- set dt = dbt_unit_testing_date_utils.generate_n_days_ago_variables(posix_time) -%}
+```
+
+Thanks to these simple manipulations, you will get the same generation result.
+
+### Override current_datetime
+
+Besides `mocked_timestamp_posix` mocking you can also override macro `current_timestamp()` with the condition of using it for tests. To understand if this macro is used in tests you can use `flags` feature. For example as follows:
+
+```sql
+{% macro current_timestamp() %}
+  {# 1652119712 seconds, 1652119712000 milliseconds #}
+  {% if flags.WHICH == "test" -%}
+    CAST('2022-05-09 18:08:32.000 UTC' as timestamp)
+  {%- else -%}
+    CAST(current_timestamp as timestamp)
+  {%- endif %}
+{% endmacro %}
 ```
 
 ### Main feature
